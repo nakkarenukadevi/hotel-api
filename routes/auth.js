@@ -25,8 +25,16 @@ router.post("/register", async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: "30m",
     });
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     res.status(201).json({
       _id: user._id,
@@ -34,6 +42,7 @@ router.post("/register", async (req, res) => {
       email: user.email,
       role: user.role,
       token,
+      refreshToken,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -53,8 +62,16 @@ router.post("/login", async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "30d",
+      expiresIn: "30m",
     });
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     res.json({
       _id: user._id,
@@ -62,6 +79,7 @@ router.post("/login", async (req, res) => {
       email: user.email,
       role: user.role,
       token,
+      refreshToken,
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
