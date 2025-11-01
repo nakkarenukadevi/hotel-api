@@ -135,4 +135,15 @@ router.get("/me", protect, async (req, res) => {
   }
 });
 
+// Get all users (admin only)
+router.get("/users", protect, admin, async (req, res) => {
+  try {
+    // Exclude password field
+    const users = await User.find({}).select("-password");
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 module.exports = router;
