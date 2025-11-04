@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const TokenBlacklist = require("../models/TokenBlacklist");
 
 exports.protect = async (req, res, next) => {
   try {
@@ -13,6 +14,14 @@ exports.protect = async (req, res, next) => {
 
     if (!token) {
       return res.status(401).json({ message: "Not authorized - No token" });
+    }
+
+    // Check if token is blacklisted
+    const blacklisted = await TokenBlacklist.findOne({ token });
+    if (blacklisted) {
+      return res
+        .status(401)
+        .json({ message: "Not authorized - Token has been revoked" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -32,16 +41,14 @@ exports.protect = async (req, res, next) => {
         10
       );
       if (decoded.iat < changedTimestamp) {
-        return res
-          .status(401)
-          .json({
-            message:
-              "Token expired due to password change. Please login again.",
-          });
+        return res.status(401).json({
+          message: "Token expired due to password change. Please login again.",
+        });
       }
     }
 
     req.user = user;
+    req.token = token; // Store token for logout functionality
     next();
   } catch (error) {
     res.status(401).json({ message: "Not authorized - Invalid token" });

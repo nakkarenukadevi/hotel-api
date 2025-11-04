@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const rateLimit = require("express-rate-limit");
 const User = require("../models/User");
+const TokenBlacklist = require("../models/TokenBlacklist");
 const { protect, admin } = require("../middleware/auth");
 const router = express.Router();
 
@@ -258,6 +259,48 @@ router.post("/register-admin", protect, admin, async (req, res) => {
       email: user.email,
       role: user.role,
     });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Logout user (blacklist current token)
+router.post("/logout", protect, async (req, res) => {
+  try {
+    const token = req.token;
+    const decoded = jwt.decode(token);
+
+    // Add token to blacklist with expiration time
+    await TokenBlacklist.create({
+      token,
+      userId: req.user._id,
+      expiresAt: new Date(decoded.exp * 1000), // Convert JWT exp to Date
+    });
+
+    res.json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Logout from all devices (blacklist all tokens by updating passwordChangedAt)
+router.post("/logout-all", protect, async (req, res) => {
+  try {
+    // Update passwordChangedAt to invalidate all existing tokens
+    const user = await User.findById(req.user._id);
+    user.passwordChangedAt = Date.now();
+    await user.save({ validateBeforeSave: false });
+
+    // Also blacklist current token
+    const token = req.token;
+    const decoded = jwt.decode(token);
+    await TokenBlacklist.create({
+      token,
+      userId: req.user._id,
+      expiresAt: new Date(decoded.exp * 1000),
+    });
+
+    res.json({ message: "Logged out from all devices successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
